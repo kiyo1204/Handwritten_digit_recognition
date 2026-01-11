@@ -7,7 +7,7 @@ import pandas as pd
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
 from keras.utils import to_categorical, plot_model
-from keras.callbacks import LambdaCallback
+from keras.callbacks import LambdaCallback, EarlyStopping, TensorBoard, CSVLogger
 from sklearn.model_selection import train_test_split
 
 def plot_history(history):
@@ -152,9 +152,9 @@ if is_create_model:
                 metrics=["accuracy"]
             )
 
-            tb_cb = tf.keras.callbacks.TensorBoard(log_dir="/logs", histogram_freq=0, write_graph=True)
-            csv_logger = tf.keras.callbacks.CSVLogger("./logs/training.csv")
-            es_cb = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=0, verbose=0, mode="auto")
+            tb_cb = TensorBoard(log_dir="/logs", histogram_freq=0, write_graph=True)
+            csv_logger = CSVLogger("./logs/training.csv")
+            es_cb = EarlyStopping(monitor="val_loss", patience=0, verbose=0, mode="auto")
             stream_it_callback = LambdaCallback(
                 on_epoch_end=lambda epoch, logs: (
                     metrics_data.append({
@@ -182,8 +182,8 @@ if is_create_model:
 
             plot_history(history)
             st.write(f"Loss: {score[0]}, Accuracy: {score[1]}")
-            plot_model(model, show_shapes=True, to_file="./models/model.png")
-            st.image("./models/model.png", width="content")
+            #plot_model(model, show_shapes=True, to_file="./models/model.png")
+            #st.image("./models/model.png", width="content")
             model.save("./models/my_model.h5")
 
         st.success("モデルの保存完了")
