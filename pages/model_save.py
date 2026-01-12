@@ -152,7 +152,7 @@ if is_create_model:
                 metrics=["accuracy"]
             )
 
-            tb_cb = TensorBoard(log_dir="/logs", histogram_freq=0, write_graph=True)
+            tb_cb = TensorBoard(log_dir="./logs", histogram_freq=0, write_graph=True)
             csv_logger = CSVLogger("./logs/training.csv")
             es_cb = EarlyStopping(monitor="val_loss", patience=0, verbose=0, mode="auto")
             stream_it_callback = LambdaCallback(
