@@ -221,9 +221,6 @@ if is_create_model:
             log_area.empty()
 
             st.space("large")
-            st.subheader("モデルの構成")
-            plot_model(model, show_shapes=True, to_file="./models/model.png")
-            st.image("./models/model.png", width="content")
             plot_history(history)
             
             st.subheader("テスト用データでの精度")
