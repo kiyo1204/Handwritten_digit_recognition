@@ -8,5 +8,8 @@ pages = {
     ]
 }
 
+if "callbacks" not in st.session_state:
+    st.session_state["callbacks"] = {}
+
 page = st.navigation(pages)
 page.run()
