@@ -1,8 +1,9 @@
 import streamlit as st
-import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
+import time
+import os
 
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
@@ -17,6 +18,7 @@ def plot_history(history):
     val_loss = history.history["val_loss"]
     epochs = range(1, len(acc)+1)
 
+    st.subheader("訓練データとテストデータでの制度の比較", width="stretch")
     compare_acc = plt.figure()
     plt.title("Comparison of Accuracy")
     plt.xlabel("epoch")
@@ -37,14 +39,49 @@ def plot_history(history):
     col1.pyplot(compare_acc)
     col2.pyplot(compare_loss)
 
+@st.dialog("学習設定")
+def fit_option():
+    callbacks = {}
+    csvlogger_value = False
+    earlystopping_value = False
+
+    type_object = st.session_state["callbacks"].keys()
+    for class_object in st.session_state["callbacks"].values():
+        if type(class_object) in type_object:
+            if "CSVLogger" in str(type(class_object)):
+                csvlogger_value = True
+            elif "EarlyStopping" in str(type(class_object)):
+                earlystopping_value = True
+
+    with st.form("fit_setting", clear_on_submit=True):
+        csvlogger = st.checkbox("学習の経過をcsv保存", value=csvlogger_value)
+        earlystopping = st.checkbox("学習のストップ", value=earlystopping_value)
+
+        submitted = st.form_submit_button("保存")
+        if submitted:
+            if csvlogger:
+                callback = CSVLogger("./logs/training.csv")
+                callbacks[type(callback)] = callback
+            if earlystopping:            
+                callback = EarlyStopping(monitor="val_loss", patience=0, verbose=0, mode="auto")
+                callbacks[type(callback)] = callback
+            st.session_state["callbacks"] = callbacks
+            st.success("保存しました")
+            time.sleep(.5)
+            st.rerun()
 
 st.title("モデルの保存")
 st.write("MNISTを使用したモデルの作成を行います")
 with st.sidebar:
     epochs = st.slider("エポック数", min_value=1, max_value=100, value=10)
-    batch_size = st.selectbox("バッチサイズ", [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048], index=3)
+    batch_size = st.selectbox("バッチサイズ", [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048], index=6)
 
-num_layers = st.slider("層の数", min_value=2, max_value=10)
+    st.space("medium")
+    if st.button("学習設定", width="stretch"):
+        fit_option()
+
+
+num_layers = st.slider("層の数", min_value=2, max_value=15)
 layers = []
 params = [[[] for i in range(3)] for i in range(num_layers)]
 
@@ -92,13 +129,16 @@ else:
     st.warning("最後のレイヤーはDense, 活性化関数はSoftmax, ユニット数は10にしてください")
     can_create = False
 
-is_create_model = st.button("開始", disabled=can_create is not True)
 
+is_create_model = st.button("開始", disabled=can_create is not True)
 if is_create_model:
     try:
         with st.spinner("モデルの作成中"):
             log_area = st.empty()
             metrics_data = []
+
+            if os.path.isfile("./logs/training.csv"):
+                os.remove("./logs/training.csv")
 
             Mnist = tf.keras.datasets.mnist
             (X_train, y_train), (X_val, y_val) = Mnist.load_data()
@@ -152,9 +192,6 @@ if is_create_model:
                 metrics=["accuracy"]
             )
 
-            tb_cb = TensorBoard(log_dir="./logs", histogram_freq=0, write_graph=True)
-            csv_logger = CSVLogger("./logs/training.csv")
-            es_cb = EarlyStopping(monitor="val_loss", patience=0, verbose=0, mode="auto")
             stream_it_callback = LambdaCallback(
                 on_epoch_end=lambda epoch, logs: (
                     metrics_data.append({
@@ -167,6 +204,8 @@ if is_create_model:
                     log_area.code(pd.DataFrame(metrics_data).tail(10).to_string(col_space=10, index=False))
                 )
             )
+            callbacks = list(st.session_state["callbacks"].values())
+            callbacks.append(stream_it_callback)
 
             history = model.fit(
                         X_train, y_train,
@@ -174,37 +213,46 @@ if is_create_model:
                         batch_size=batch_size,
                         verbose=1,
                         validation_data=(X_test, y_test),
-                        callbacks=[tb_cb, csv_logger, es_cb, stream_it_callback]
+                        callbacks=callbacks
                     )
             
 
             score = model.evaluate(X_val, y_val, verbose=1)
+            log_area.empty()
 
+            st.space("large")
+            st.subheader("モデルの構成")
+            plot_model(model, show_shapes=True, to_file="./models/model.png")
+            st.image("./models/model.png", width="content")
             plot_history(history)
-            st.write(f"Loss: {score[0]}, Accuracy: {score[1]}")
-            #plot_model(model, show_shapes=True, to_file="./models/model.png")
-            #st.image("./models/model.png", width="content")
+            
+            st.subheader("テスト用データでの精度")
+            col1, col2 = st.columns(2)
+            col1.write(f"**Accuracy**: {score[1]}")
+            col2.write(f"**Loss**: {score[0]}")
+            
             model.save("./models/my_model.h5")
 
-        st.success("モデルの保存完了")
-
-        col1, col2, col3 = st.columns(3)
-        with open("./models/my_model.h5", "rb") as f:
-            col1.download_button("モデルのダウンロード",
-                                data=f,
-                                file_name="model.h5"
-                            )
-        with open("./logs/training.csv", "rb") as f:
-            col2.download_button("精度の詳細のダウンロード(csv)",
-                                data=f,
-                                file_name="train_log.csv"
-                            )
-        
+        st.success("モデルの作成完了")
+        st.space("medium")
 
     except Exception as e:
         st.error("モデル作成でエラーが発生しました.\nパラメータの確認をしてください")
-        st.subheader("エラー内容")
-        st.write(e)
+        st.error(e)
 
+    if os.path.isfile("./logs/training.csv"):
+        with open("./logs/training.csv", "rb") as f:
+            df = pd.read_csv(f)
+            st.subheader("学習過程")
+            st.dataframe(df, hide_index=True)
+    else:
+        st.warning("学習の詳細をCSVでダウンロードするには学習設定の変更をしてください")
+
+    col1, col2, col3 = st.columns(3)
+    with open("./models/my_model.h5", "rb") as f:
+            col1.download_button("モデルのダウンロード",
+                            data=f,
+                            file_name="model.h5"
+                        )
 
 

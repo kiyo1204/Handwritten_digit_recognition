@@ -11,7 +11,7 @@ from keras.models import load_model
 st.title("MNISTを使った数字認識")
 st.space("small")
 
-st.write("モデルのアップロード")
+st.subheader("モデルのアップロード")
 model_file = st.file_uploader("ファイルをアップロードしてください", ["h5"])
 if model_file:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp_file:
