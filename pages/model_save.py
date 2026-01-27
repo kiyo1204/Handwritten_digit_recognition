@@ -2,13 +2,16 @@ import streamlit as st
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import time
 import os
+import random
 
 from keras.models import Sequential
-from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
+from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D, BatchNormalization
 from keras.utils import to_categorical
 from keras.callbacks import LambdaCallback, EarlyStopping, CSVLogger
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
 
 
@@ -17,7 +20,7 @@ def create_layers(num_layers: int):
     params = [[[] for i in range(3)] for i in range(num_layers)]
 
     for layer in range(num_layers):
-        layer_type = st.selectbox(f"**{layer+1}層目**", ["Dense", "Conv2D", "Flatten", "MaxPooling2D", "Dropout"])
+        layer_type = st.selectbox(f"**{layer+1}層目**", ["Dense", "Conv2D", "Flatten", "MaxPooling2D", "Dropout", "BatchNormalization"])
         param = params[layer]
         if layer_type == "Conv2D":
             # 畳み込み層のパラメータ設定
@@ -40,30 +43,23 @@ def create_layers(num_layers: int):
             param[1] = None
             param[2] = None
             layers.append([layer_type, layer])
-        elif layer_type == "Flatten":
-            layers.append([layer_type, layer])
         elif layer_type == "Dropout":
             # ドロップアウト層のパラメータ設定
             param[0] = st.slider("ドロップアウト率(出力を減らす)", min_value=0.00, max_value=1.00, step=.01, key="dropout_"+str(layer))
             layers.append([layer_type, layer])
+        else:
+            layers.append([layer_type, layer])
 
     can_create = False
     last_activation = params[-1][:2]
-    first_activation = layers[0][0]
 
     # モデル作成ができるかの判定(中間層は見ない)
-    if last_activation[0] == 10 and last_activation[1] == "softmax" and (first_activation == "Dense" or first_activation == "Conv2D"):
+    if last_activation[0] == 10 and last_activation[1] == "softmax":
         can_create = True
-    elif last_activation[0] == 10 and last_activation[1] == "softmax":
-        st.warning("最初のレイヤーはDenseかConv2Dにしてください")
-        can_create = False
-    elif first_activation == "Dense" or first_activation == "Conv2D":
-        st.warning("最後のレイヤーはDense, 活性化関数はSoftmax, ユニット数は10にしてください")
-        can_create = False
     else:
-        st.warning("最初のレイヤーはDenseかConv2Dにしてください")
         st.warning("最後のレイヤーはDense, 活性化関数はSoftmax, ユニット数は10にしてください")
         can_create = False
+
     return layers, params, can_create
 
 # モデルを作成する処理
@@ -72,7 +68,7 @@ def create_model(X_train, y_train, X_val, log_area):
     metrics_data = []
 
     # 訓練データをさらに分割
-    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=.2, random_state=42, stratify=y_train)
+    X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=.2, random_state=42)
 
     model = Sequential()
 
@@ -94,13 +90,12 @@ def create_model(X_train, y_train, X_val, log_area):
                 activation=param[2]
                 )
             )
-        elif layer[0] == "Dense" and layer[1] == 0:
-            # 画像データの形を整えて正規化 
-            X_train, X_test = X_train.reshape(-1, 784) / 255.0, X_test.reshape(-1, 784) / 255.0
-            X_val = X_val.reshape(-1, 784)
+        elif layer[0] == "Dense" and layer[1] < 2:
+            # 画像データの形を整えて正規化
+            X_train, X_test = X_train.reshape(-1, 28, 28, 1) / 255.0, X_test.reshape(-1, 28, 28, 1) / 255.0
             model.add(Dense(
                 units=param[0],
-                input_shape=(784, ),
+                input_shape=(28, 28, 1),
                 activation=param[1]
                 )
             )
@@ -139,14 +134,24 @@ def create_model(X_train, y_train, X_val, log_area):
     callbacks.append(stream_it_callback)
 
     # 学習の実行
+    data_gen = ImageDataGenerator(
+        rotation_range=30,
+        width_shift_range=.2,
+        height_shift_range=.2,
+        zoom_range=.2,
+        horizontal_flip=False,
+        vertical_flip=False
+    )
+    data_gen.fit(X_train)
+
     history = model.fit(
-                        X_train, y_train,
-                        epochs=epochs,
-                        batch_size=batch_size,
-                        verbose=1,
-                        validation_data=(X_test, y_test),
-                        callbacks=callbacks
-                    )
+        data_gen.flow(X_train, y_train, batch_size=batch_size),
+        steps_per_epoch=len(X_train) // batch_size,
+        epochs=epochs,
+        validation_data=(X_test, y_test),
+        verbose=1,
+        callbacks=callbacks
+    )
 
     return model, history, X_val
 
@@ -183,7 +188,7 @@ def plot_history(history):
     col2.pyplot(compare_loss)
 
 # モデルfit時のcallback設定
-@st.dialog("学習設定")
+@st.dialog("高度な学習設定")
 def fit_option():
     callbacks = {}
     csvlogger_value = False
@@ -213,19 +218,43 @@ def fit_option():
                 callbacks[type(callback)] = callback
             if earlystopping:
                 # fit中に学習が進まなくなったら学習を止める            
-                callback = EarlyStopping(monitor="val_loss", patience=0, verbose=0, mode="auto")
+                callback = EarlyStopping(monitor="val_loss", patience=3, verbose=0, mode="auto")
                 callbacks[type(callback)] = callback
             st.session_state["callbacks"] = callbacks
             st.success("保存しました")
             time.sleep(.5)
             st.rerun()
 
+@st.dialog("画像確認用")
+def plot_show_image():
+    mnist = tf.keras.datasets.mnist
+    (X_train, y_train), (X_val, y_val) = mnist.load_data()
+    X_train = X_train.reshape(-1, 28, 28, 1) / 255.0
+    y_train = to_categorical(y_train)
+    data_gen = ImageDataGenerator(
+        rotation_range=30,
+        width_shift_range=.2,
+        height_shift_range=.2,
+        zoom_range=.2,
+        horizontal_flip=False,
+        vertical_flip=False
+    )
+    data_gen.fit(X_train)
+    x_batch, y_batch = next(data_gen.flow(X_train, y_train, batch_size=32))
+
+    # 最初の10枚を表示
+    fig, ax = plt.subplots()
+    index = random.randint(0, 31)
+    # (28, 28, 1) -> (28, 28) に戻して表示
+    plt.imshow(x_batch[index].reshape(28, 28), cmap='gray')
+    fig.suptitle(f"MNIST Data : {np.argmax(y_batch[index])}")
+    st.pyplot(fig)
 
 # -- UI --
 st.title("モデルの保存")
 st.write("MNISTを使用したモデルの作成を行います")
 
-num_layers = st.slider("層の数", min_value=2, max_value=15)
+num_layers = st.slider("層の数", min_value=3, max_value=30)
 layers, params, can_create = create_layers(num_layers)
 is_create_model = st.button("開始", disabled=can_create is not True)
 
@@ -234,8 +263,10 @@ with st.sidebar:
     batch_size = st.selectbox("バッチサイズ", [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048], index=6, disabled=is_create_model)
 
     st.space("medium")
-    if st.button("学習設定", width="stretch", disabled=is_create_model):
+    if st.button("高度な学習設定", width="stretch", disabled=is_create_model):
         fit_option()
+    if st.button("学習画像の確認", width="stretch", disabled=is_create_model):
+        plot_show_image()
 
 if is_create_model:
     try:
