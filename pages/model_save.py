@@ -20,30 +20,30 @@ def create_layers(num_layers: int):
     params = [[[] for i in range(3)] for i in range(num_layers)]
 
     for layer in range(num_layers):
-        layer_type = st.selectbox(f"**{layer+1}層目**", ["Dense", "Conv2D", "Flatten", "MaxPooling2D", "Dropout", "BatchNormalization"])
+        layer_type = st.selectbox(f"**{layer+1}層目**", ["全結合層", "畳み込み層", "平坦化", "プーリング層", "ドロップアウト層"])
         param = params[layer]
-        if layer_type == "Conv2D":
+        if layer_type == "畳み込み層":
             # 畳み込み層のパラメータ設定
             col1, col2, col3 = st.columns(3)
             param[0] = col1.selectbox("*Filters(フィルタの数)*", [16, 32, 64, 128, 256, 512], key="filter_"+str(layer))
             param[1] = col2.number_input("*Kernel Size(フィルタの寸法)(N x N)*", min_value=1, max_value=5, key="kernel_"+str(layer))
             param[2] =col3.selectbox("*活性化関数*", ["relu", "softmax"], key="act_cnn_"+str(layer))
             layers.append([layer_type, layer])
-        elif layer_type == "Dense":
+        elif layer_type == "全結合層":
             # 全結合層のパラメータ設定
             col1, col2, col3 = st.columns(3)
             param[0] = col1.number_input("*ユニット数*", min_value=2, max_value=512, key="units_"+str(layer))
             param[1] = col2.selectbox("*活性化関数*", ["relu", "softmax"], key="act_dense_"+str(layer))
             param[2] = None
             layers.append([layer_type, layer])
-        elif layer_type == "MaxPooling2D":
+        elif layer_type == "プーリング層":
             # プーリング層のパラメータ設定
             col1, col2, col3 = st.columns(3)
             param[0] = col1.number_input("*プーリングのサイズ(N x N)*", min_value=1, max_value=10, key="pooling_"+str(layer))
             param[1] = None
             param[2] = None
             layers.append([layer_type, layer])
-        elif layer_type == "Dropout":
+        elif layer_type == "ドロップアウト層":
             # ドロップアウト層のパラメータ設定
             param[0] = st.slider("ドロップアウト率(出力を減らす)", min_value=0.00, max_value=1.00, step=.01, key="dropout_"+str(layer))
             layers.append([layer_type, layer])
@@ -57,7 +57,7 @@ def create_layers(num_layers: int):
     if last_activation[0] == 10 and last_activation[1] == "softmax":
         can_create = True
     else:
-        st.warning("最後のレイヤーはDense, 活性化関数はSoftmax, ユニット数は10にしてください")
+        st.warning("最後のレイヤーは全結合層, 活性化関数はSoftmax, ユニット数は10にしてください")
         can_create = False
 
     return layers, params, can_create
@@ -73,7 +73,7 @@ def create_model(X_train, y_train, X_val, log_area):
     model = Sequential()
 
     for layer, param in zip(layers, params):
-        if layer[0] == "Conv2D" and layer[1] == 0:
+        if layer[0] == "畳み込み層" and layer[1] == 0:
             # 画像データの形を整えて正規化
             X_train, X_test = X_train.reshape(-1, 28, 28, 1) / 255.0, X_test.reshape(-1, 28, 28, 1) / 255.0
             model.add(Conv2D(
@@ -83,14 +83,14 @@ def create_model(X_train, y_train, X_val, log_area):
                 padding="same",
                 activation=param[2])
             )
-        elif layer[0] == "Conv2D":
+        elif layer[0] == "畳み込み層":
             model.add(Conv2D(
                 filters=param[0],
                 kernel_size=(param[1], param[1]),
                 activation=param[2]
                 )
             )
-        elif layer[0] == "Dense" and layer[1] < 2:
+        elif layer[0] == "全結合層" and layer[1] < 2:
             # 画像データの形を整えて正規化
             X_train, X_test = X_train.reshape(-1, 28, 28, 1) / 255.0, X_test.reshape(-1, 28, 28, 1) / 255.0
             model.add(Dense(
@@ -99,15 +99,15 @@ def create_model(X_train, y_train, X_val, log_area):
                 activation=param[1]
                 )
             )
-        elif layer[0] == "Dense":
+        elif layer[0] == "全結合層":
             model.add(Dense(
                 units=param[0],
                 activation=param[1]
                 )
             )
-        elif layer[0] == "MaxPooling2D":
+        elif layer[0] == "プーリング層":
             model.add(MaxPooling2D(pool_size=param[0]))
-        elif layer[0] == "Flatten":
+        elif layer[0] == "平坦化":
             model.add(Flatten())
 
     # モデルの最適化アルゴリズム, 損失関数, 評価関数を設定
@@ -218,7 +218,7 @@ def fit_option():
                 callbacks[type(callback)] = callback
             if earlystopping:
                 # fit中に学習が進まなくなったら学習を止める            
-                callback = EarlyStopping(monitor="val_loss", patience=3, verbose=0, mode="auto")
+                callback = EarlyStopping(monitor="val_loss", patience=5, verbose=0, mode="auto")
                 callbacks[type(callback)] = callback
             st.session_state["callbacks"] = callbacks
             st.success("保存しました")
@@ -270,7 +270,7 @@ with st.sidebar:
 
 if is_create_model:
     try:
-        with st.spinner("モデルの作成中"):
+        with st.status("モデルの作成中", expanded=True):
             log_area = st.empty()
 
             # csvファイルがあったら削除
@@ -291,7 +291,6 @@ if is_create_model:
             score = model.evaluate(X_val, y_val, verbose=0)
             log_area.empty()
 
-            st.space("large")
             plot_history(history)
             
             st.subheader("テスト用データでの精度")
@@ -302,17 +301,15 @@ if is_create_model:
             # モデルを一時保存
             model.save("./models/my_model.h5")
 
-        st.success("モデルの作成完了", icon="✅")
-        st.space("medium")
-
-        col1, col2, col3 = st.columns(3)
-        # モデルのダウンロード処理
-        with open("./models/my_model.h5", "rb") as f:
-                col1.download_button("モデルのダウンロード",
-                                data=f,
-                                file_name="model.h5",
-                                icon=":material/download:"
-                            )  
+        with st.status("モデルの作成完了", state="complete"):
+            col1, col2, col3 = st.columns(3)
+            # モデルのダウンロード処理
+            with open("./models/my_model.h5", "rb") as f:
+                    col1.download_button("モデルのダウンロード",
+                                    data=f,
+                                    file_name="model.h5",
+                                    icon=":material/download:"
+                                )  
 
     except Exception as e:
         st.error("モデル作成でエラーが発生しました.\nパラメータの確認をしてください")
