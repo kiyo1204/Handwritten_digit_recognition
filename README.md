@@ -2,16 +2,48 @@
 URL: https://handwrittendigitrecognition-4ckfcz9af5ujpdizjuuuus.streamlit.app/
 
 ## 概要(Description)
-- このアプリは手書き数字のデータセットであるMNISTを使用し, オリジナルなモデルを作成・精度の確認を行うことができる. フレームワークにはStreamlitを使用し, Streamlit Cloudで公開している
+このアプリは手書き数字のデータセットであるMNISTを使用し, オリジナルなモデルを作成・精度の確認を行うことができます. フレームワークにはStreamlitを使用し, Streamlit Cloudで公開しています.
 
 ## 使用例(Example)
-*None*
+- ### 手書き数字の予測
+https://github.com/user-attachments/assets/5112d8e7-e419-48ec-a00b-6ebd6377e295
+
+- ### モデルの作成
+https://github.com/user-attachments/assets/da082dc5-af2e-4ac5-b60b-9cb0634d274a
 
 ## コードのインストール方法(Installation)
-*None*
+このアプリはクラウドにアップロードしているため使用にダウンロードの必要はありませんが, 自分で機能を追加したりしたいときはダウンロードして追加できます.
 
+1. 保存したいディレクトリに移動する.
+2. 右クリックでターミナルを起動する(**保存したいディレクトリがカレントディレクトリになっていることを確認**).
+   <img width="1135" height="505" alt="Install_file" src="https://github.com/user-attachments/assets/ff7fbe69-e074-4375-9543-624b7d65667f" />
+3. 以下のコマンドを実行する.
+   ```bash
+   git clone https://github.com/kiyo1204/Handwritten_digit_recognition
+   ```
+   
 ## 使い方(Usage)
-*None*
+手書き数字の予測を行うためにはモデルのファイル(h5ファイル)が必要です. モデルファイルは**モデルの保存**ページで作成できます.
+
+### モデルの作成
+例として簡単なニューラルネットワークの作成を行います.
+1. 最初の層は**平坦化**を行います.
+   平坦化(Flatten)とは, 多次元の配列を1次元に変換することです. モデル作成時のデータの入力は28×28×1の3次元の画像データなので全結合層の前に平坦化(Flatten)を行って1次元のデータに変換する必要があります(コード内でこの変換は省けますが, データの形を理解するためにあえて省いていません).
+
+2. 次の層に**全結合層**を入れます.
+   全結合層(Dense)は, 1つの入力ユニットが次の層のユニットすべてに繋がっている層です. ユニット数はお好みですが, 今回は128とします. また, 活性化関数はReLUとします.
+
+3. 最後の層も全結合層にします.
+   この層で画像がどの数字であるか判定します. そのため, ユニット数は10にします. 活性化関数はソフトマックスとします.
+
+4. 実行ボタンを押します.
+   問題がなく学習できればエラーが発生せずにモデルの精度や損失のグラフが表示されます. その下の**モデルの作成完了**欄をクリックするとモデルのダウンロードボタンが表示されます.
+
+### 手書き数字の予測
+1. ダウンロードしたモデルのファイルをアップロードします.
+2. 手書き欄で書いてみてエラーが発生しなければ成功です.
+
+この例では簡単なニューラルネットワークを作成しましたが, このアプリでは畳み込み層やプーリング層にも対応しているためCNN(Convolutional Neural Network)も作成できます.
 
 ## 環境(Requirement)
 - OS: Windows11
@@ -22,3 +54,4 @@ URL: https://handwrittendigitrecognition-4ckfcz9af5ujpdizjuuuus.streamlit.app/
 - Streamlit==1.52.2
 - streamlit_drawable_canvas==0.9.3
 - Tensorflow==2.20.0
+
