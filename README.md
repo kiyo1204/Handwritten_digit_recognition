@@ -1,17 +1,24 @@
 # MNISTを用いた手書き数字認識アプリ
 URL: https://handwrittendigitrecognition-4ckfcz9af5ujpdizjuuuus.streamlit.app/
 
-## 環境
+## 概要(Description)
+- このアプリは手書き数字のデータセットであるMNISTを使用し, オリジナルなモデルを作成・精度の確認を行うことができる. フレームワークにはStreamlitを使用し, Streamlit Cloudで公開している
+
+## 使用例(Example)
+*None*
+
+## コードのインストール方法(Installation)
+*None*
+
+## 使い方(Usage)
+*None*
+
+## 環境(Requirement)
 - OS: Windows11
 - 言語: Python3.11
-
-## ライブラリ
-- keras==3.12.0
-- matplotlib==3.10.8
-- numpy==2.4.1
-- pandas==2.3.3
-- Pillow==12.1.0
-- scikit_learn==1.8.0
-- streamlit==1.52.2
+### 主要ライブラリ
+- Keras==3.12.0
+- Matplotlib==3.10.8
+- Streamlit==1.52.2
 - streamlit_drawable_canvas==0.9.3
-- tensorflow==2.20.0
+- Tensorflow==2.20.0
