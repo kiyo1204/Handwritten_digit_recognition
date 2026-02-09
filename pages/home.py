@@ -3,33 +3,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tempfile
+import re
 
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 from keras.models import load_model
 from io import StringIO
 
-# 画像の予測処理
+# 画像の予測処理（図と予測ラベルを返す）
 def predict_image(canvas_result):
-    if canvas_result.image_data is not None:
+    if canvas_result is not None and canvas_result.image_data is not None:
         drawn_image = canvas_result.image_data
         drawn_image_gray = drawn_image[:, :, 3]
         if np.sum(drawn_image_gray) > 0:
             drawn_image_gray = Image.fromarray(drawn_image_gray)
             resized_image = np.array(drawn_image_gray.resize((28, 28)))
-            
             fig = plt.figure()
+            pred_label = None
             if model is not None:
-                try:
-                    predict_data = resized_image.reshape(-1, 28, 28, 1)
-                    pred = model.predict(predict_data)
-                except ValueError:
-                    predict_data = resized_image.reshape(-1, 28, 28, 1)
-                    pred = model.predict(predict_data)
-                plt.title(pred.argmax())
-
-            plt.imshow(resized_image)
-            st.pyplot(fig, width="stretch")
+                predict_data = resized_image.reshape(-1, 28, 28, 1)
+                pred = model.predict(predict_data)
+                pred_label = int(pred.argmax())
+            plt.imshow(resized_image, cmap="gray")
+            plt.axis("off")
+            return fig, pred_label
+    return None, None
 
 @st.dialog("説明")
 def show_markdown():
@@ -75,31 +73,44 @@ if model_file:
         tmp_file.write(model_file.getvalue())
         tmp_file_path = tmp_file.name
     try:
-        model = load_model(tmp_file_path)
+        model = load_model(tmp_file_path, safe_mode=False)
         st.success("モデル読み込み完了")
         with StringIO() as buf:
             model.summary(print_fn=lambda x: buf.write(x + "\n"))
             text = buf.getvalue()
         st.subheader("モデルの詳細")
+        text = re.sub(r"[^a-zA-Z0-9().,\n: ]", "", text)
         st.write(text)
     except Exception as e:
-        st.error("モデルの読み込みでエラーが発生しました: {e}")
+        st.error(f"モデルの読み込みでエラーが発生しました: {e}")
 else:
     model = None
     st.warning("予測にはモデルの保存をしてください")
 
 st.space("medium")
 
-# 手書き欄
-st.subheader("文字の手書き")
-canvas_result = st_canvas(
-    stroke_width=pens_width,
-    update_streamlit=True,
-    height="400",
-    width="400",
-    drawing_mode="freedraw",
-)
-predict_image(canvas_result)
+# 手書き欄と表示欄を横並びに配置
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("文字の手書き")
+    canvas_result = st_canvas(
+        stroke_width=pens_width,
+        update_streamlit=True,
+        height=400,
+        width=340,
+        drawing_mode="freedraw",
+    )
+
+with col2:
+    st.subheader("認識結果")
+    fig, pred_label = predict_image(canvas_result)
+    if fig is not None:
+        st.pyplot(fig)
+        if pred_label is not None:
+            st.metric("予測", str(pred_label))
+    else:
+        st.info("キャンバスに数字を描くと、ここに認識結果が表示されます。")
 
 col1, col2 = st.columns(2)
 if col1.button("Kerasについて"):
