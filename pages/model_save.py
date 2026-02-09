@@ -20,7 +20,7 @@ def create_layers(num_layers: int):
     params = [[[] for i in range(3)] for i in range(num_layers)]
 
     for layer in range(num_layers):
-        layer_type = st.selectbox(f"**{layer+1}層目**", ["全結合層", "畳み込み層", "平坦化", "プーリング層", "ドロップアウト層"])
+        layer_type = st.selectbox(f"**{layer+2}層目**", ["全結合層", "畳み込み層", "平坦化", "プーリング層", "ドロップアウト層"])
         param = params[layer]
         if layer_type == "畳み込み層":
             # 畳み込み層のパラメータ設定
@@ -481,7 +481,8 @@ def explain_words():
 
 # -- UI --
 st.title("モデルの保存")
-st.write("MNISTを使用したモデルの作成を行います")
+st.write("MNISTを使用したモデルの作成を行います.")
+st.write("**1層目** : *Input(28×28×1)*")
 
 num_layers = st.slider("層の数", min_value=3, max_value=30)
 layers, params, can_create = create_layers(num_layers)
