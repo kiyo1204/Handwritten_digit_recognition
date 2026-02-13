@@ -66,10 +66,10 @@ with st.sidebar:
     pens_width = st.slider("ペンの太さ", min_value=10, max_value=100, value=40)
 
 st.subheader("モデルのアップロード")
-model_file = st.file_uploader("ファイルをアップロードしてください", ["h5"])
+model_file = st.file_uploader("ファイルをアップロードしてください", ["keras"])
 if model_file:
     # モデルの読み込み
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".keras") as tmp_file:
         tmp_file.write(model_file.getvalue())
         tmp_file_path = tmp_file.name
     try:

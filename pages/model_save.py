@@ -10,7 +10,7 @@ import random
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D, BatchNormalization
 from keras.utils import to_categorical
-from keras.callbacks import LambdaCallback, EarlyStopping, CSVLogger
+from keras.callbacks import LambdaCallback, EarlyStopping, CSVLogger, ModelCheckpoint
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
 
@@ -193,6 +193,7 @@ def fit_option():
     callbacks = {}
     csvlogger_value = False
     earlystopping_value = False
+    modelcheckpoint_value = False
 
     # 最新のcallback設定のtypeの取得
     type_object = st.session_state["callbacks"].keys()
@@ -203,11 +204,14 @@ def fit_option():
                 csvlogger_value = True
             elif "EarlyStopping" in str(type(class_object)):
                 earlystopping_value = True
+            elif "ModelCheckpoint" in str(type(class_object)):
+                modelcheckpoint_value = True
 
     # 送信部分
     with st.form("fit_setting", clear_on_submit=True):
         csvlogger = st.checkbox("学習の経過をcsv保存", value=csvlogger_value)
         earlystopping = st.checkbox("学習のストップ", value=earlystopping_value)
+        modelcheckpoint = st.checkbox("ベストモデルの保存", value=modelcheckpoint_value)
 
         submitted = st.form_submit_button("保存")
         # "保存"ボタンが押されたら
@@ -219,6 +223,16 @@ def fit_option():
             if earlystopping:
                 # fit中に学習が進まなくなったら学習を止める            
                 callback = EarlyStopping(monitor="val_loss", patience=5, verbose=0, mode="auto")
+                callbacks[type(callback)] = callback
+            if modelcheckpoint:
+                callback = ModelCheckpoint(
+                    filepath="./models/best_model.keras",
+                    monitor="val_loss",
+                    save_best_only=True,
+                    save_weights_only=False,
+                    mode="min",
+                    verbose=1
+                )
                 callbacks[type(callback)] = callback
             st.session_state["callbacks"] = callbacks
             st.success("保存しました")
@@ -255,7 +269,7 @@ def plot_show_image():
 @st.dialog("用語の説明")
 def explain_words():
     st.markdown(
-"""
+r"""
 ## レイヤー名について
 - **全結合層(Dense)**:<br>
 　全結合層は以下の画像のように一つのユニットが次の層のすべてのユニットと繋がっている層である. 入力は一次元のデータになるため, 平坦化が必要.<br>
@@ -531,17 +545,27 @@ if is_create_model:
             col2.write(f"**Loss**: {score[0]}")
             
             # モデルを一時保存
-            model.save("./models/my_model.h5")
+            model.save("./models/my_model.keras")
 
         with st.status("モデルの作成完了", state="complete"):
             col1, col2, col3 = st.columns(3)
             # モデルのダウンロード処理
-            with open("./models/my_model.h5", "rb") as f:
+            with open("./models/my_model.keras", "rb") as f:
                     col1.download_button("モデルのダウンロード",
                                     data=f,
-                                    file_name="model.h5",
+                                    file_name="model.keras",
                                     icon=":material/download:"
-                                )  
+                                )
+            # ベストモデルの保存
+            callbacks = st.session_state["callbacks"].keys()
+            if "ModelCheckpoint" in str(callbacks):
+                # モデルのダウンロード処理
+                with open("./models/best_model.keras", "rb") as f:
+                    col2.download_button("ベストモデルのダウンロード",
+                                    data=f,
+                                    file_name="best_model.keras",
+                                    icon=":material/download:"
+                                )
 
     except Exception as e:
         st.error("モデル作成でエラーが発生しました.\nパラメータの確認をしてください")
