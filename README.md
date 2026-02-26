@@ -29,7 +29,6 @@ https://github.com/user-attachments/assets/549f728d-ce0e-430d-b37b-568f254197b7
 - **主要ライブラリ**
   - Streamlit
   - Tensorflow / Keras
-  - Matplotllib
  
   そのほかのライブラリやバージョンは*requirements.txt*に記載されています.
 
