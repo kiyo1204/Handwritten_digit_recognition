@@ -1,6 +1,17 @@
 # MNISTを用いた手書き数字認識アプリ
 URL: https://handwrittendigitrecognition-4ckfcz9af5ujpdizjuuuus.streamlit.app/
 
+**目次**
+- [MNISTを用いた手書き数字認識アプリ](#mnistを用いた手書き数字認識アプリ)
+  - [概要(Description)](#概要description)
+  - [使用例(Example)](#使用例example)
+  - [実行環境](#実行環境)
+  - [コードのインストール方法(Installation)](#コードのインストール方法installation)
+  - [使い方(Usage)](#使い方usage)
+    - [モデルの作成](#モデルの作成)
+    - [手書き数字の予測](#手書き数字の予測)
+
+
 ## 概要(Description)
 このアプリは手書き数字のデータセットであるMNISTを使用し, オリジナルなモデルを作成・精度の確認を行うことができます. フレームワークにはStreamlitを使用し, Streamlit Cloudで公開しています.
 
@@ -18,7 +29,6 @@ https://github.com/user-attachments/assets/549f728d-ce0e-430d-b37b-568f254197b7
 - **主要ライブラリ**
   - Streamlit
   - Tensorflow / Keras
-  - Matplotllib
  
   そのほかのライブラリやバージョンは*requirements.txt*に記載されています.
 
@@ -38,7 +48,7 @@ https://github.com/user-attachments/assets/549f728d-ce0e-430d-b37b-568f254197b7
    ```
    
 ## 使い方(Usage)
-手書き数字の予測を行うためにはモデルのファイル(h5ファイル)が必要です. モデルファイルは**モデルの保存**ページで作成できます.
+手書き数字の予測を行うためにはモデルのファイル(kerasファイル)が必要です. モデルファイルは**モデルの保存**ページで作成できます.
 
 ### モデルの作成
 例として簡単なニューラルネットワークの作成を行います.
@@ -60,7 +70,10 @@ https://github.com/user-attachments/assets/549f728d-ce0e-430d-b37b-568f254197b7
 
   
 ### 手書き数字の予測
-1. ダウンロードしたモデルのファイルをアップロードします.
-2. 手書き欄で書いてみてエラーが発生しなければ成功です.
+1. **計算ページ**に移動します.
+2. ダウンロードしたモデルのファイルをアップロードします.
+3. **始める**ボタンを押すと問題と2桁分の手書き欄が表示されます. 正解すると次の問題になります.
+   <img width="1395" height="734" alt="image" src="https://github.com/user-attachments/assets/bfa1aa74-e2ba-4fb3-8deb-1e346bc692a8" />
+
 
 この例では簡単なニューラルネットワークを作成しましたが, このアプリでは畳み込み層やプーリング層にも対応しているためCNN(Convolutional Neural Network)も作成できます.
