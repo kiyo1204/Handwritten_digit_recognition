@@ -9,11 +9,13 @@ pages = {
     ]
 }
 
-states = ["callbacks", "play_calculate"]
+states = ["callbacks", "play_calculate", "key_num"]
 
 for state in states:
     if state == "callbacks" and  state not in st.session_state:
         st.session_state[state] = {}
+    elif state == "key_num" and state not in st.session_state:
+        st.session_state[state] = 0
     elif state not in st.session_state:
         st.session_state[state] = False
 
