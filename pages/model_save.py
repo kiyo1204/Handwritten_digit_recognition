@@ -63,7 +63,7 @@ def create_layers(num_layers: int):
     return layers, params, can_create
 
 # モデルを作成する処理
-def create_model(X_train, y_train, X_val, log_area):
+def create_model(X_train, y_train, log_area):
     # ログを入れる変数
     metrics_data = []
 
@@ -153,7 +153,7 @@ def create_model(X_train, y_train, X_val, log_area):
         callbacks=callbacks
     )
 
-    return model, history, X_val
+    return model, history
 
 # 精度のプロット処理
 def plot_history(history):
@@ -531,7 +531,7 @@ if is_create_model:
             y_train, y_val = to_categorical(y_train), to_categorical(y_val)
 
             #モデルを作成
-            model, history, X_val = create_model(X_train, y_train, X_val, log_area)
+            model, history = create_model(X_train, y_train, log_area)
 
             # 未知データでの評価
             score = model.evaluate(X_val, y_val, verbose=0)
