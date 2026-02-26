@@ -29,6 +29,24 @@ def predict_image(canvas_result):
             return fig, pred_label
     return None, None
 
+def load(model_file): # モデルの読み込み
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".keras") as tmp_file:
+        tmp_file.write(model_file.getvalue())
+        tmp_file_path = tmp_file.name
+    try:
+        model = load_model(tmp_file_path, safe_mode=False)
+        st.success("モデル読み込み完了")
+        with StringIO() as buf:
+            model.summary(print_fn=lambda x: buf.write(x + "\n"))
+            text = buf.getvalue()
+        st.subheader("モデルの詳細")
+        text = re.sub(r"[^a-zA-Z0-9().,\n: ]", "", text)
+        st.write(text)
+        
+        return model
+    except Exception as e:
+        st.error(f"モデルの読み込みでエラーが発生しました: {e}")
+
 @st.dialog("説明")
 def show_markdown():
     st.markdown("""
@@ -68,21 +86,7 @@ with st.sidebar:
 st.subheader("モデルのアップロード")
 model_file = st.file_uploader("ファイルをアップロードしてください", ["keras"])
 if model_file:
-    # モデルの読み込み
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".keras") as tmp_file:
-        tmp_file.write(model_file.getvalue())
-        tmp_file_path = tmp_file.name
-    try:
-        model = load_model(tmp_file_path, safe_mode=False)
-        st.success("モデル読み込み完了")
-        with StringIO() as buf:
-            model.summary(print_fn=lambda x: buf.write(x + "\n"))
-            text = buf.getvalue()
-        st.subheader("モデルの詳細")
-        text = re.sub(r"[^a-zA-Z0-9().,\n: ]", "", text)
-        st.write(text)
-    except Exception as e:
-        st.error(f"モデルの読み込みでエラーが発生しました: {e}")
+    model = load(model_file)
 else:
     model = None
     st.warning("予測にはモデルの保存をしてください")
