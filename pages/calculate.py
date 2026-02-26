@@ -51,44 +51,47 @@ def calculate(x, y):
     is_correct = False
 
     st.write(f"# {x}+{y}")
-    # 手書き欄を横並びに配置
-    col1, col2 = st.columns(2)
 
-    with col1:
-        tens_place = st_canvas(
-            stroke_width=20,
-            update_streamlit=True,
-            height=400,
-            width=340,
-            drawing_mode="freedraw",
-            key="tens_place"
-        )
-    with col2:
-        ones_place = st_canvas(
-            stroke_width=20,
-            update_streamlit=True,
-            height=400,
-            width=340,
-            drawing_mode="freedraw",
-            key="ones_place"
-        )
+    with st.form("aaa"):
+        # 手書き欄を横並びに配置
+        col1, col2 = st.columns(2)
+        with col1:
+            tens_place = st_canvas(
+                stroke_width=20,
+                update_streamlit=True,
+                height=400,
+                width=340,
+                drawing_mode="freedraw",
+                key=f"tens_place_{st.session_state['key_num']}"
+            )
+        with col2:
+            ones_place = st_canvas(
+                stroke_width=20,
+                update_streamlit=True,
+                height=400,
+                width=340,
+                drawing_mode="freedraw",
+                key=f"ones_place_{st.session_state['key_num']}"
+            )
+    
+        if st.form_submit_button("完了"):
+            ans = predict_image(tens_place, ones_place)
+            if x+y == ans:
+                is_correct = True
+            col1, col2 = st.columns(2)
+            col1.write(f"## ={ans}")
 
-    ans = predict_image(tens_place, ones_place)
-    if x+y == ans:
-        is_correct = True
-    col1, col2 = st.columns(2)
-    col1.write(f"## ={ans}")
-
-    if is_correct:
-        col2.success("## 正解")
-        st.session_state["x"] = random.randint(0, 49)
-        st.session_state["y"] = random.randint(0, 50)
-        
-        with st.spinner("### 次の問題...."):
-            time.sleep(1)
-            st.rerun()
-    else:
-        col2.error("## 不正解")
+            if is_correct:
+                col2.success("## 正解")
+                st.session_state["x"] = random.randint(0, 49)
+                st.session_state["y"] = random.randint(0, 50)
+                st.session_state["key_num"] += 1
+                
+                with st.spinner("### 次の問題...."):
+                    time.sleep(4)
+                    st.rerun()
+            else:
+                col2.error("## 不正解")
 
     if st.button("やめる"):
         st.session_state["play_calculate"] = False
