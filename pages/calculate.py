@@ -61,7 +61,7 @@ def calculate(x, y):
             height=400,
             width=340,
             drawing_mode="freedraw",
-            key=f"tens_place_{st.session_state['key_num']}"
+            key="tens_place"
         )
     with col2:
         ones_place = st_canvas(
@@ -70,7 +70,7 @@ def calculate(x, y):
             height=400,
             width=340,
             drawing_mode="freedraw",
-            key=f"ones_place_{st.session_state['key_num']}"
+            key="ones_place"
         )
 
     ans = predict_image(tens_place, ones_place)
@@ -83,7 +83,6 @@ def calculate(x, y):
         col2.success("## 正解")
         st.session_state["x"] = random.randint(0, 49)
         st.session_state["y"] = random.randint(0, 50)
-        st.session_state["key_num"] += 1
         
         with st.spinner("### 次の問題...."):
             time.sleep(1)
