@@ -75,5 +75,4 @@ https://github.com/user-attachments/assets/549f728d-ce0e-430d-b37b-568f254197b7
 3. **始める**ボタンを押すと問題と2桁分の手書き欄が表示されます. 正解すると次の問題になります.
    <img width="1395" height="734" alt="image" src="https://github.com/user-attachments/assets/bfa1aa74-e2ba-4fb3-8deb-1e346bc692a8" />
 
-
 この例では簡単なニューラルネットワークを作成しましたが, このアプリでは畳み込み層やプーリング層にも対応しているためCNN(Convolutional Neural Network)も作成できます.
