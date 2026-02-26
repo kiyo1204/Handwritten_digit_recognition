@@ -4,12 +4,20 @@ st.set_page_config(page_title="ホーム")
 pages = {
     "ページ" : [
     st.Page(page="pages/home.py", title="ホーム"),
-    st.Page(page="pages/model_save.py", title="モデルの保存")
+    st.Page(page="pages/model_save.py", title="モデルの保存"),
+    st.Page(page="pages/calculate.py", title="計算")
     ]
 }
 
-if "callbacks" not in st.session_state:
-    st.session_state["callbacks"] = {}
+states = ["callbacks", "play_calculate", "key_num"]
+
+for state in states:
+    if state == "callbacks" and  state not in st.session_state:
+        st.session_state[state] = {}
+    elif state == "key_num" and state not in st.session_state:
+        st.session_state[state] = 0
+    elif state not in st.session_state:
+        st.session_state[state] = False
 
 page = st.navigation(pages)
 page.run()
