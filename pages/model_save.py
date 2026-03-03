@@ -3,24 +3,22 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import time
-import os
-import random
+import time, os, random, csv
 
 from keras.models import Sequential
-from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D, BatchNormalization
+from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D, BatchNormalization, RandomRotation, RandomZoom
 from keras.utils import to_categorical
-from keras.callbacks import LambdaCallback, EarlyStopping, CSVLogger, ModelCheckpoint
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import LambdaCallback, EarlyStopping, CSVLogger, ModelCheckpoint, ReduceLROnPlateau
+#from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
 
-
+# 各層のパラメータ設定
 def create_layers(num_layers: int):
     layers = []
     params = [[[] for i in range(3)] for i in range(num_layers)]
 
     for layer in range(num_layers):
-        layer_type = st.selectbox(f"**{layer+2}層目**", ["全結合層", "畳み込み層", "平坦化", "プーリング層", "ドロップアウト層"])
+        layer_type = st.selectbox(f"**{layer+2}層目**", ["全結合層", "畳み込み層", "平坦化", "プーリング層", "ドロップアウト層", "バッチ正規化"])
         param = params[layer]
         if layer_type == "畳み込み層":
             # 畳み込み層のパラメータ設定
@@ -71,6 +69,9 @@ def create_model(X_train, y_train, log_area):
     X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=.2, random_state=42)
 
     model = Sequential()
+    # 微弱な回転, ズーム
+    model.add(RandomRotation(factor=.1, input_shape=(28, 28, 1)))
+    model.add(RandomZoom(height_factor=.1, width_factor=.1))
 
     for layer, param in zip(layers, params):
         if layer[0] == "畳み込み層" and layer[1] == 0:
@@ -109,6 +110,8 @@ def create_model(X_train, y_train, log_area):
             model.add(MaxPooling2D(pool_size=param[0]))
         elif layer[0] == "平坦化":
             model.add(Flatten())
+        elif layer[0] == "バッチ正規化":
+            model.add(BatchNormalization())
 
     # モデルの最適化アルゴリズム, 損失関数, 評価関数を設定
     model.compile(
@@ -130,23 +133,44 @@ def create_model(X_train, y_train, log_area):
             log_area.code(pd.DataFrame(metrics_data).tail(10).to_string(col_space=10, index=False))
         )
     )
+
+    # 精度が上がらなくなったら学習率を半分にする
+    reduce_lr = ReduceLROnPlateau(
+        monitor='val_accuracy', 
+        factor=0.4, 
+        patience=3, 
+        min_lr=0.00001, 
+        verbose=1
+    )
+
     callbacks = list(st.session_state["callbacks"].values())
     callbacks.append(stream_it_callback)
+    callbacks.append(reduce_lr)
 
     # 学習の実行
-    data_gen = ImageDataGenerator(
-        rotation_range=30,
-        width_shift_range=.2,
-        height_shift_range=.2,
-        zoom_range=.2,
-        horizontal_flip=False,
-        vertical_flip=False
-    )
-    data_gen.fit(X_train)
+
+    #data_gen = ImageDataGenerator(
+    #    rotation_range=30,
+    #    width_shift_range=.2,
+    #    height_shift_range=.2,
+    #    zoom_range=.2,
+    #    horizontal_flip=False,
+    #    vertical_flip=False
+    #)
+    #data_gen.fit(X_train)
+
+    #history = model.fit(
+    #    data_gen.flow(X_train, y_train, batch_size=batch_size),
+    #    steps_per_epoch=len(X_train) // batch_size,
+    #    epochs=epochs,
+    #   validation_data=(X_test, y_test),
+    #    verbose=1,
+    #    callbacks=callbacks
+    #)
 
     history = model.fit(
-        data_gen.flow(X_train, y_train, batch_size=batch_size),
-        steps_per_epoch=len(X_train) // batch_size,
+        X_train, y_train,
+        batch_size=batch_size,
         epochs=epochs,
         validation_data=(X_test, y_test),
         verbose=1,
@@ -246,23 +270,12 @@ def plot_show_image():
     (X_train, y_train), (X_val, y_val) = mnist.load_data()
     X_train = X_train.reshape(-1, 28, 28, 1) / 255.0
     y_train = to_categorical(y_train)
-    data_gen = ImageDataGenerator(
-        rotation_range=30,
-        width_shift_range=.2,
-        height_shift_range=.2,
-        zoom_range=.2,
-        horizontal_flip=False,
-        vertical_flip=False
-    )
-    data_gen.fit(X_train)
-    x_batch, y_batch = next(data_gen.flow(X_train, y_train, batch_size=32))
 
-    # 最初の10枚を表示
     fig, ax = plt.subplots()
-    index = random.randint(0, 31)
+    index = random.randint(0, 100)
     # (28, 28, 1) -> (28, 28) に戻して表示
-    plt.imshow(x_batch[index].reshape(28, 28), cmap='gray')
-    fig.suptitle(f"MNIST Data : {np.argmax(y_batch[index])}")
+    plt.imshow(X_train[index].reshape(28, 28), cmap='gray')
+    fig.suptitle(f"MNIST Data : {np.argmax(y_train[index])}")
     st.pyplot(fig)
 
 # 用語の説明
@@ -521,7 +534,10 @@ if is_create_model:
 
             # csvファイルがあったら削除
             if os.path.isfile("./logs/training.csv"):
-                os.remove("./logs/training.csv")
+                with open("./logs/training.csv", "w", newline="")as f:
+                    writer = csv.writer(f)
+                    #現在のファイルサイズを０にする
+                    f.truncate(0)
 
             # データの取得, 分割
             mnist = tf.keras.datasets.mnist
@@ -566,19 +582,18 @@ if is_create_model:
                                     file_name="best_model.keras",
                                     icon=":material/download:"
                                 )
+                    
+        if "CSV" in str(callbacks):
+            with open("./logs/training.csv", "rb") as f:
+                df = pd.read_csv(f)
+                st.subheader("学習過程")
+                st.dataframe(df, hide_index=True)
+        else:
+            st.warning("学習の詳細をCSVでダウンロードするには学習設定の変更をしてください")
 
     except Exception as e:
         st.error("モデル作成でエラーが発生しました.\nパラメータの確認をしてください")
         st.error(e)
-
-    # csvファイルがあったら表示
-    if os.path.isfile("./logs/training.csv"):
-        with open("./logs/training.csv", "rb") as f:
-            df = pd.read_csv(f)
-            st.subheader("学習過程")
-            st.dataframe(df, hide_index=True)
-    else:
-        st.warning("学習の詳細をCSVでダウンロードするには学習設定の変更をしてください")
 
     st.button("やり直す")
 
