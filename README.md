@@ -17,7 +17,7 @@ URL: https://handwrittendigitrecognition-4ckfcz9af5ujpdizjuuuus.streamlit.app/
 
 ## 使用例(Example)
 - ### 手書き数字の予測
-https://github.com/user-attachments/assets/d3753351-94cc-4724-8e50-f49d110ee17b
+https://github.com/user-attachments/assets/6efce2c9-2d8e-4712-92e7-31a49663db99
 
 - ### モデルの作成
 https://github.com/user-attachments/assets/549f728d-ce0e-430d-b37b-568f254197b7

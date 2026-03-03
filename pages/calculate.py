@@ -52,7 +52,7 @@ def calculate(x, y):
 
     st.write(f"# {x}+{y}")
 
-    with st.form("aaa"):
+    with st.form("手書き欄"):
         # 手書き欄を横並びに配置
         col1, col2 = st.columns(2)
         with col1:
