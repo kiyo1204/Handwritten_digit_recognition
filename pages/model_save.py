@@ -9,7 +9,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D, BatchNormalization, RandomRotation, RandomZoom
 from keras.utils import to_categorical
 from keras.callbacks import LambdaCallback, EarlyStopping, CSVLogger, ModelCheckpoint, ReduceLROnPlateau
-#from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
 
 # 各層のパラメータ設定
@@ -70,8 +70,8 @@ def create_model(X_train, y_train, log_area):
 
     model = Sequential()
     # 微弱な回転, ズーム
-    model.add(RandomRotation(factor=.1, input_shape=(28, 28, 1)))
-    model.add(RandomZoom(height_factor=.1, width_factor=.1))
+    #model.add(RandomRotation(factor=.2, input_shape=(28, 28, 1)))
+    #model.add(RandomZoom(height_factor=.2, width_factor=.1))
 
     for layer, param in zip(layers, params):
         if layer[0] == "畳み込み層" and layer[1] == 0:
@@ -134,48 +134,37 @@ def create_model(X_train, y_train, log_area):
         )
     )
 
-    # 精度が上がらなくなったら学習率を半分にする
-    reduce_lr = ReduceLROnPlateau(
-        monitor='val_accuracy', 
-        factor=0.4, 
-        patience=3, 
-        min_lr=0.00001, 
-        verbose=1
-    )
-
     callbacks = list(st.session_state["callbacks"].values())
     callbacks.append(stream_it_callback)
-    callbacks.append(reduce_lr)
 
     # 学習の実行
-
-    #data_gen = ImageDataGenerator(
-    #    rotation_range=30,
-    #    width_shift_range=.2,
-    #    height_shift_range=.2,
-    #    zoom_range=.2,
-    #    horizontal_flip=False,
-    #    vertical_flip=False
-    #)
-    #data_gen.fit(X_train)
-
-    #history = model.fit(
-    #    data_gen.flow(X_train, y_train, batch_size=batch_size),
-    #    steps_per_epoch=len(X_train) // batch_size,
-    #    epochs=epochs,
-    #   validation_data=(X_test, y_test),
-    #    verbose=1,
-    #    callbacks=callbacks
-    #)
+    data_gen = ImageDataGenerator(
+        rotation_range=30,
+        width_shift_range=.2,
+        height_shift_range=.2,
+        zoom_range=.2,
+        horizontal_flip=False,
+        vertical_flip=False
+    )
+    data_gen.fit(X_train)
 
     history = model.fit(
-        X_train, y_train,
-        batch_size=batch_size,
+        data_gen.flow(X_train, y_train, batch_size=batch_size),
+        steps_per_epoch=len(X_train) // batch_size,
         epochs=epochs,
         validation_data=(X_test, y_test),
         verbose=1,
         callbacks=callbacks
     )
+
+    #history = model.fit(
+    #    X_train, y_train,
+    #    batch_size=batch_size,
+    #    epochs=epochs,
+    #    validation_data=(X_test, y_test),
+    #    verbose=1,
+    #    callbacks=callbacks
+    #)
 
     return model, history
 
@@ -218,6 +207,7 @@ def fit_option():
     csvlogger_value = False
     earlystopping_value = False
     modelcheckpoint_value = False
+    reduce_learning_value = False
 
     # 最新のcallback設定のtypeの取得
     type_object = st.session_state["callbacks"].keys()
@@ -230,12 +220,15 @@ def fit_option():
                 earlystopping_value = True
             elif "ModelCheckpoint" in str(type(class_object)):
                 modelcheckpoint_value = True
+            elif "ReduceLROnPlateau" in str(type(class_object)):
+                reduce_learning_value = True
 
     # 送信部分
     with st.form("fit_setting", clear_on_submit=True):
         csvlogger = st.checkbox("学習の経過をcsv保存", value=csvlogger_value)
         earlystopping = st.checkbox("学習のストップ", value=earlystopping_value)
         modelcheckpoint = st.checkbox("ベストモデルの保存", value=modelcheckpoint_value)
+        reduce_learning = st.checkbox("学習率の減少", value=reduce_learning_value)
 
         submitted = st.form_submit_button("保存")
         # "保存"ボタンが押されたら
@@ -244,10 +237,12 @@ def fit_option():
                 # 学習過程をcsv形式で保存
                 callback = CSVLogger("./logs/training.csv")
                 callbacks[type(callback)] = callback
+            
             if earlystopping:
                 # fit中に学習が進まなくなったら学習を止める            
                 callback = EarlyStopping(monitor="val_loss", patience=5, verbose=0, mode="auto")
                 callbacks[type(callback)] = callback
+            
             if modelcheckpoint:
                 callback = ModelCheckpoint(
                     filepath="./models/best_model.keras",
@@ -258,6 +253,18 @@ def fit_option():
                     verbose=1
                 )
                 callbacks[type(callback)] = callback
+
+            if reduce_learning:
+                # 精度が上がらなくなったら学習率を半分にする
+                callback = ReduceLROnPlateau(
+                    monitor='val_accuracy', 
+                    factor=0.2, 
+                    patience=3, 
+                    min_lr=0.00001, 
+                    verbose=1
+                )
+                callbacks[type(callback)] = callback
+
             st.session_state["callbacks"] = callbacks
             st.success("保存しました")
             time.sleep(.5)
